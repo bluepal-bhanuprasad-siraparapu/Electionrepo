@@ -1,0 +1,63 @@
+package com.bluepal.controller;
+
+import com.bluepal.dto.PartyRequestDTO;
+import com.bluepal.dto.PartyResponseDTO;
+import com.bluepal.entity.Party;
+import com.bluepal.exception.ResourceNotFoundException;
+import com.bluepal.service.impl.PartyServiceImpl;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.stream.Collectors;
+
+@RestController
+@RequestMapping("/api/parties")
+@RequiredArgsConstructor
+public class PartyController {
+
+    private final PartyServiceImpl partyService;
+
+    @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
+    public PartyResponseDTO createParty(@RequestBody PartyRequestDTO dto) {
+    	System.out.println("p1");
+        Party party = Party.builder()
+                .name(dto.getName())
+                .description(dto.getDescription())
+                .logo(dto.getLogo())
+                .build();
+        party = partyService.saveParty(party);
+        System.out.println("p2");
+        return partyService.mapToDTO(party);
+    }
+
+    @GetMapping
+    public List<PartyResponseDTO> getAllParties() {
+        return partyService.findAll().stream()
+                .map(partyService::mapToDTO)
+                .collect(Collectors.toList());
+    }
+
+    @GetMapping("/{id}")
+    public PartyResponseDTO getPartyById(@PathVariable Long id) {
+        Party party = partyService.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Party not found"));
+        return partyService.mapToDTO(party);
+    }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public String deleteParty(@PathVariable Long id) {
+        partyService.deleteParty(id);
+        return "Party deleted successfully";
+    }
+    
+    @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public PartyResponseDTO updateParty(@PathVariable Long id, @RequestBody PartyRequestDTO dto) {
+        return partyService.updateParty(id, dto);
+    }
+
+}

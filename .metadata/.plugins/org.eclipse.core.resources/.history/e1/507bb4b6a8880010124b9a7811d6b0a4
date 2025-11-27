@@ -1,0 +1,64 @@
+package com.bluepal.controller;
+
+import com.bluepal.dto.VoteRequestDTO;
+import com.bluepal.dto.VoteResponseDTO;
+import com.bluepal.entity.Vote;
+import com.bluepal.exception.ResourceNotFoundException;
+import com.bluepal.entity.User;
+import com.bluepal.entity.Election;
+import com.bluepal.entity.Candidate;
+import com.bluepal.service.impl.VoteServiceImpl;
+import com.bluepal.service.impl.UserServiceImpl;
+import com.bluepal.service.impl.ElectionServiceImpl;
+import com.bluepal.service.impl.CandidateServiceImpl;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.stream.Collectors;
+
+@RestController
+@RequestMapping("/api/votes")
+@RequiredArgsConstructor
+public class VoteController {
+
+    private final VoteServiceImpl voteService;
+    private final UserServiceImpl userService;
+    private final ElectionServiceImpl electionService;
+    private final CandidateServiceImpl candidateService;
+
+    @PostMapping
+    @PreAuthorize("hasRole('VOTER')")
+    public VoteResponseDTO castVote(@RequestBody VoteRequestDTO dto) {
+    	System.out.println("a");
+        return voteService.castVote(dto);
+    }
+
+    @GetMapping
+    @PreAuthorize("hasRole('ADMIN')")
+    public List<VoteResponseDTO> getAllVotes() {
+        return voteService.findAllVotes()
+                .stream()
+                .map(this::mapToDTO)
+                .collect(Collectors.toList());
+    }
+
+    @GetMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public VoteResponseDTO getVoteById(@PathVariable Long id) {
+        Vote vote = voteService.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Vote not found"));
+        return mapToDTO(vote);
+    }
+
+    private VoteResponseDTO mapToDTO(Vote vote) {
+        return VoteResponseDTO.builder()
+                .id(vote.getId())
+                .voter(userService.mapToDTO(vote.getVoter()))
+                .candidate(candidateService.mapToDTO(vote.getCandidate()))
+                .election(electionService.mapToDTO(vote.getElection()))
+                .castAt(vote.getCastAt())
+                .build();
+    }
+}

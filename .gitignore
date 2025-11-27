@@ -1,0 +1,7 @@
+# Top-level .gitignore for the project
+.env
+**/target/
+**/node_modules/
+.vscode/
+*.log
+.DS_Store

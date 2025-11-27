@@ -1,0 +1,180 @@
+package com.bluepal.service.impl;
+
+import com.bluepal.dto.UserRequestDTO;
+import com.bluepal.dto.UserResponseDTO;
+import com.bluepal.entity.User;
+import com.bluepal.entity.Role;
+import com.bluepal.repository.AllowedVoterRepository;
+import com.bluepal.repository.UserRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
+
+@Service
+@RequiredArgsConstructor
+public class UserServiceImpl {
+
+    private final UserRepository userRepo;
+    private final PasswordEncoder passwordEncoder;
+    private final AllowedVoterRepository allowedVoterRepo;
+
+//    public UserResponseDTO createUser(UserRequestDTO dto) {
+//
+//        Role role = Role.valueOf(dto.getRole());
+//
+//        // Voter registration validation
+//        if (role == Role.VOTER) {
+//            if (dto.getVoterId() == null || dto.getVoterId().isEmpty()) {
+//                throw new RuntimeException("Voter ID is required for voter registration");
+//            }
+//
+//            boolean allowed = !allowedVoterRepo.findByVoterId(dto.getVoterId()).isEmpty();
+//            if (!allowed) {
+//                throw new RuntimeException("This voter ID is not allowed to register");
+//            }
+//        }
+//
+//        // Build User entity
+//        User user = User.builder()
+//                .username(dto.getUsername())
+//                .email(dto.getEmail())
+//                .voterId(dto.getVoterId())
+//                .role(role)
+//                .password(passwordEncoder.encode(dto.getPassword()))
+//                .build();
+//
+//        user = userRepo.save(user);
+//        return mapToDTO(user);
+//    }
+    
+    public UserResponseDTO createUser(UserRequestDTO dto) {
+        Role role = Role.valueOf(dto.getRole());
+
+        // ✅ Check for duplicate username
+//        if (userRepo.findByUsername(dto.getUsername()).isPresent()) {
+//            throw new RuntimeException("Username already taken. Please choose another one.");
+//        }
+//
+//        // ✅ Check for duplicate email
+//        if (userRepo.findByEmail(dto.getEmail()).isPresent()) {
+//            throw new RuntimeException("Email already registered. Please use another one.");
+//        }
+
+        // ✅ Voter registration validation
+        if (role == Role.VOTER) {
+            if (dto.getVoterId() == null || dto.getVoterId().isEmpty()) {
+                throw new RuntimeException("Voter ID is required for voter registration");
+            }
+
+            // Check if voterId already exists
+            if (userRepo.findByVoterId(dto.getVoterId()).isPresent()) {
+                throw new RuntimeException("This Voter ID is already registered");
+            }
+
+            // Check if voterId is allowed
+            boolean allowed = !allowedVoterRepo.findByVoterId(dto.getVoterId()).isEmpty();
+            if (!allowed) {
+                throw new RuntimeException("This Voter ID is not allowed to register");
+            }
+        }
+
+        // Build User entity
+        User user = User.builder()
+                .username(dto.getUsername())
+                .email(dto.getEmail())
+                .voterId(dto.getVoterId())
+                .role(role)
+                .password(passwordEncoder.encode(dto.getPassword()))
+                .build();
+
+        user = userRepo.save(user);
+        return mapToDTO(user);
+    }
+
+
+
+    public UserResponseDTO mapToDTO(User user) {
+        return UserResponseDTO.builder()
+                .id(user.getId())
+                .username(user.getUsername())
+                .email(user.getEmail())
+                .voterId(user.getVoterId())
+                .role(user.getRole().name())
+                .build();
+    }
+
+    public List<UserResponseDTO> getAllUsers() {
+        return userRepo.findAll().stream().map(this::mapToDTO).collect(Collectors.toList());
+    }
+
+    public Optional<User> findById(Long id) {
+        return userRepo.findById(id);
+    }
+
+    public Optional<User> findByUsername(String username) {
+        return userRepo.findByUsername(username);
+    }
+
+    public Optional<User> findByVoterId(String voterId) {
+        return userRepo.findByVoterId(voterId);
+    }
+
+    public List<User> findByRole(Role role) {
+        return userRepo.findByRole(role);
+    }
+
+    public void deleteUser(Long id) {
+        userRepo.deleteById(id);
+    }
+    
+    public Optional<User> findByEmail(String email) {
+        return userRepo.findByEmail(email);
+    }
+
+    public void deleteUserByEmail(String email) {
+        User user = userRepo.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        userRepo.delete(user);
+    }
+    
+    public UserResponseDTO updateUser(String email, UserRequestDTO dto) {
+        // Find the existing user
+        User existingUser = userRepo.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        // Update fields if provided
+        if (dto.getUsername() != null && !dto.getUsername().isEmpty()) {
+            existingUser.setUsername(dto.getUsername());
+        }
+
+        if (dto.getEmail() != null && !dto.getEmail().isEmpty()) {
+            existingUser.setEmail(dto.getEmail());
+        }
+
+        if (dto.getPassword() != null && !dto.getPassword().isEmpty()) {
+            existingUser.setPassword(passwordEncoder.encode(dto.getPassword()));
+        }
+
+        if (dto.getRole() != null && !dto.getRole().isEmpty()) {
+            existingUser.setRole(Role.valueOf(dto.getRole()));
+        }
+
+        // Voter-specific updates
+        if (existingUser.getRole() == Role.VOTER) {
+            if (dto.getVoterId() != null && !dto.getVoterId().isEmpty()) {
+                existingUser.setVoterId(dto.getVoterId());
+            }
+        }
+
+        // Save updated user
+        existingUser = userRepo.save(existingUser);
+
+        return mapToDTO(existingUser);
+    }
+
+
+}

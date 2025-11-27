@@ -1,0 +1,101 @@
+package com.bluepal.service.impl;
+
+import com.bluepal.dto.AllowedVoterRequestDTO;
+import com.bluepal.dto.AllowedVoterResponseDTO;
+import com.bluepal.dto.ElectionResponseDTO;
+import com.bluepal.entity.AllowedVoter;
+import com.bluepal.entity.Election;
+import com.bluepal.repository.AllowedVoterRepository;
+import com.bluepal.repository.ElectionRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
+
+@Service
+@RequiredArgsConstructor
+public class AllowedVoterServiceImpl {
+
+    private final AllowedVoterRepository allowedVoterRepo;
+    private final ElectionRepository electionRepo;
+
+    // ------------------ Add Allowed Voter ------------------
+    public AllowedVoterResponseDTO addAllowedVoter(AllowedVoterRequestDTO dto) {
+        Election election = electionRepo.findById(dto.getElectionId())
+                .orElseThrow(() -> new RuntimeException("Election not found"));
+
+        // Check max voters limit
+        long currentVoters = allowedVoterRepo.countByElection(election);
+        if (election.getMaxVoters() != null && currentVoters >= election.getMaxVoters()) {
+            throw new RuntimeException("Max voters limit reached for this election");
+        }
+
+        // Prevent duplicate voter for the same election
+        if (allowedVoterRepo.findByVoterIdAndElection(dto.getVoterId(), election).isPresent()) {
+            throw new RuntimeException("Voter already added to this election");
+        }
+
+        AllowedVoter allowedVoter = AllowedVoter.builder()
+                .voterId(dto.getVoterId())
+                .election(election)
+                .build();
+
+        allowedVoter = allowedVoterRepo.save(allowedVoter);
+        return mapToDTO(allowedVoter);
+    }
+
+    // ------------------ Get Allowed Voters by Election ------------------
+    public List<AllowedVoterResponseDTO> getAllowedVotersByElection(Election election) {
+        return allowedVoterRepo.findByElection(election)
+                .stream()
+                .map(this::mapToDTO)
+                .collect(Collectors.toList());
+    }
+
+    // ------------------ Delete Allowed Voter ------------------
+    public void deleteAllowedVoter(Long id) {
+        if (!allowedVoterRepo.existsById(id)) {
+            throw new RuntimeException("Allowed voter not found");
+        }
+        allowedVoterRepo.deleteById(id);
+    }
+
+    // ------------------ Map to DTO ------------------
+    public AllowedVoterResponseDTO mapToDTO(AllowedVoter allowedVoter) {
+        return AllowedVoterResponseDTO.builder()
+                .id(allowedVoter.getId())
+                .voterId(allowedVoter.getVoterId())
+                .election(ElectionResponseDTO.builder()
+                        .id(allowedVoter.getElection().getId())
+                        .title(allowedVoter.getElection().getTitle())
+                        .description(allowedVoter.getElection().getDescription())
+                        .startDate(allowedVoter.getElection().getStartDate())
+                        .endDate(allowedVoter.getElection().getEndDate())
+                        .status(allowedVoter.getElection().getStatus().name())
+                        .maxVoters(allowedVoter.getElection().getMaxVoters())
+                        .build())
+                .build();
+    }
+
+    // ------------------ Find by voterId & election ------------------
+    public Optional<AllowedVoter> findByVoterIdAndElection(String voterId, Election election) {
+        return allowedVoterRepo.findByVoterIdAndElection(voterId, election);
+    }
+
+    // ------------------ Find by voterId (any election) ------------------
+    public Optional<AllowedVoter> findByVoterId(String voterId) {
+        return allowedVoterRepo.findByVoterId(voterId);
+    }
+
+    // ------------------ Get all allowed voters (optional) ------------------
+    public List<AllowedVoter> getAllAllowedVoters() {
+        return allowedVoterRepo.findAll();
+    }
+
+    // ------------------ Get by election (full entities) ------------------
+    public List<AllowedVoter> findByElection(Election election) {
+        return allowedVoterRepo.findByElection(election);
+    }
+}

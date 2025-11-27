@@ -1,0 +1,60 @@
+package com.bluepal.controller;
+
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.bluepal.dto.CandidateResultDTO;
+import com.bluepal.dto.ElectionResultDTO;
+import com.bluepal.entity.Candidate;
+import com.bluepal.entity.Election;
+import com.bluepal.entity.Vote;
+import com.bluepal.service.impl.CandidateServiceImpl;
+import com.bluepal.service.impl.ElectionServiceImpl;
+import com.bluepal.service.impl.VoteServiceImpl;
+
+import jakarta.validation.constraints.AssertFalse.List;
+import lombok.RequiredArgsConstructor;
+
+@RestController
+@RequestMapping("/api/admin/results")
+@RequiredArgsConstructor
+@PreAuthorize("hasRole('ADMIN')")
+public class AdminResultsController {
+
+    private final VoteServiceImpl voteService;
+    private final CandidateServiceImpl candidateService;
+    private final ElectionServiceImpl electionService;
+
+    // Get detailed results for a specific election
+    @GetMapping("/election/{electionId}")
+    public ElectionResultDTO getElectionResults(@PathVariable Long electionId) {
+        Election election = electionService.findById(electionId)
+                .orElseThrow(() -> new RuntimeException("Election not found"));
+
+        java.util.List<Candidate> candidates = candidateService.findByElection(election);
+        java.util.List<Vote> votes = voteService.findByElection(election);
+        long totalVotes = votes.size();
+
+        java.util.List<CandidateResultDTO> candidateResults = candidates.stream().map(c -> {
+            long voteCount = votes.stream().filter(v -> v.getCandidate().getId().equals(c.getId())).count();
+            double percentage = totalVotes == 0 ? 0 : ((double) voteCount / totalVotes) * 100;
+            return new CandidateResultDTO(c.getId(), c.getName(), c.getParty().getName(), voteCount, percentage);
+        }).sorted((a, b) -> Long.compare(b.getVoteCount(), a.getVoteCount())) // sort descending
+        .toList();
+
+        CandidateResultDTO winner = candidateResults.isEmpty() ? null : candidateResults.get(0);
+
+        return new ElectionResultDTO(
+            election.getId(),
+            election.getTitle(),
+            election.getStartDate(),
+            election.getEndDate(),
+            totalVotes,
+            candidateResults,
+            winner
+        );
+    }
+}

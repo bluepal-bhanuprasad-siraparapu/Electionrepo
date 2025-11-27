@@ -1,0 +1,5 @@
+package com.bluepal.dto;
+
+public class CandidateResultDTO {
+
+}

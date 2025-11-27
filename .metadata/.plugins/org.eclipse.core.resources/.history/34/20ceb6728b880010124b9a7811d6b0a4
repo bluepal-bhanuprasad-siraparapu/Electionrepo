@@ -1,0 +1,58 @@
+package com.bluepal.controller;
+
+import com.bluepal.dto.AllowedVoterRequestDTO;
+import com.bluepal.dto.AllowedVoterResponseDTO;
+import com.bluepal.entity.AllowedVoter;
+import com.bluepal.entity.Election;
+import com.bluepal.exception.ResourceNotFoundException;
+import com.bluepal.service.impl.AllowedVoterServiceImpl;
+import com.bluepal.service.impl.ElectionServiceImpl;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.stream.Collectors;
+
+@RestController
+@RequestMapping("/api/allowed-voters")
+@RequiredArgsConstructor
+public class AllowedVoterController {
+
+    private final AllowedVoterServiceImpl allowedVoterService;
+    private final ElectionServiceImpl electionService;
+
+    @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
+    public AllowedVoterResponseDTO addAllowedVoter(@RequestBody AllowedVoterRequestDTO dto) {
+        return allowedVoterService.addAllowedVoter(dto);
+    }
+
+    @GetMapping("/election/{electionId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public List<AllowedVoterResponseDTO> getAllowedVotersByElection(@PathVariable Long electionId) {
+        Election election = electionService.findById(electionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Election not found"));
+        return allowedVoterService.findByElection(election)
+                .stream()
+                .map(allowedVoterService::mapToDTO)
+                .collect(Collectors.toList());
+    }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public String deleteAllowedVoter(@PathVariable Long id) {
+        allowedVoterService.deleteAllowedVoter(id);
+        return "Allowed voter removed successfully";
+    }
+    
+    @GetMapping("/voter/{voterId}")
+    @PreAuthorize("hasRole('VOTER')")
+    public List<AllowedVoterResponseDTO> getAllowedElectionsByVoter(@PathVariable Long voterId) {
+        return allowedVoterService.findByVoterId(voterId)
+                .stream()
+                .map(allowedVoterService::mapToDTO)
+                .collect(Collectors.toList());
+    }
+
+}

@@ -1,0 +1,82 @@
+package com.bluepal.service.impl;
+
+import com.bluepal.dto.ElectionRequestDTO;
+import com.bluepal.dto.ElectionResponseDTO;
+import com.bluepal.entity.AllowedVoter;
+import com.bluepal.entity.Election;
+import com.bluepal.entity.ElectionStatus;
+import com.bluepal.repository.AllowedVoterRepository;
+import com.bluepal.repository.ElectionRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
+
+@Service
+@RequiredArgsConstructor
+public class ElectionServiceImpl {
+
+    private final ElectionRepository electionRepo;
+    private final AllowedVoterRepository allowedVoterRepo;
+
+    // ------------------ Save Election ------------------
+    public Election saveElection(Election election) {
+        return electionRepo.save(election);
+    }
+
+    // ------------------ Create Election with Allowed Voters ------------------
+    public ElectionResponseDTO createElection(ElectionRequestDTO dto) {
+        Election election = Election.builder()
+                .title(dto.getTitle())
+                .description(dto.getDescription())
+                .startDate(dto.getStartDate())
+                .endDate(dto.getEndDate())
+                .status(ElectionStatus.NOT_STARTED) // default status
+                .maxVoters(dto.getMaxVoters())
+                .build();
+
+        election = electionRepo.save(election);
+
+        // ❌ REMOVE auto voter generation
+
+        return mapToDTO(election);
+    }
+
+
+    // ------------------ Map Election entity → DTO ------------------
+    public ElectionResponseDTO mapToDTO(Election election) {
+        return ElectionResponseDTO.builder()
+                .id(election.getId())
+                .title(election.getTitle())
+                .description(election.getDescription())
+                .startDate(election.getStartDate())
+                .endDate(election.getEndDate())
+                .status(election.getStatus().name())
+                .maxVoters(election.getMaxVoters())
+                .createdAt(election.getCreatedAt())
+                .updatedAt(election.getUpdatedAt())
+                .build();
+    }
+
+    // ------------------ Get all elections ------------------
+    public List<Election> findAll() {
+        return electionRepo.findAll();
+    }
+
+    // ------------------ Find election by ID ------------------
+    public Optional<Election> findById(Long id) {
+        return electionRepo.findById(id);
+    }
+
+    // ------------------ Find elections by status ------------------
+    public List<Election> findByStatus(ElectionStatus status) {
+        return electionRepo.findByStatus(status);
+    }
+
+    // ------------------ Delete election ------------------
+    public void deleteElection(Long id) {
+        electionRepo.deleteById(id);
+    }
+}

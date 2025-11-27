@@ -1,0 +1,75 @@
+package com.bluepal.controller;
+
+import com.bluepal.dto.CandidateRequestDTO;
+import com.bluepal.dto.CandidateResponseDTO;
+import com.bluepal.entity.Candidate;
+import com.bluepal.entity.Election;
+import com.bluepal.entity.Party;
+import com.bluepal.exception.ResourceNotFoundException;
+import com.bluepal.service.impl.CandidateServiceImpl;
+import com.bluepal.service.impl.ElectionServiceImpl;
+import com.bluepal.service.impl.PartyServiceImpl;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.stream.Collectors;
+
+@RestController
+@RequestMapping("/api/candidates")
+@RequiredArgsConstructor
+public class CandidateController {
+
+    private final CandidateServiceImpl candidateService;
+    private final PartyServiceImpl partyService;
+    private final ElectionServiceImpl electionService;
+
+    @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
+    public CandidateResponseDTO createCandidate(@RequestBody CandidateRequestDTO dto) {
+        return candidateService.createCandidate(dto);
+    }
+
+    @GetMapping
+    public List<CandidateResponseDTO> getAllCandidates() {
+        return candidateService.getAllCandidates();
+    }
+
+    @GetMapping("/{id}")
+    public CandidateResponseDTO getCandidateById(@PathVariable Long id) {
+        Candidate candidate = candidateService.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Candidate not found"));
+        return candidateService.mapToDTO(candidate);
+    }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public String deleteCandidate(@PathVariable Long id) {
+        candidateService.deleteCandidate(id);
+        return "Candidate deleted successfully";
+    }
+
+    @GetMapping("/election/{electionId}")
+    public List<CandidateResponseDTO> getCandidatesByElection(@PathVariable Long electionId) {
+        Election election = electionService.findById(electionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Election not found"));
+        return candidateService.findByElection(election)
+                .stream().map(candidateService::mapToDTO).collect(Collectors.toList());
+    }
+
+    @GetMapping("/party/{partyId}")
+    public List<CandidateResponseDTO> getCandidatesByParty(@PathVariable Long partyId) {
+        Party party = partyService.findById(partyId)
+                .orElseThrow(() -> new ResourceNotFoundException("Party not found"));
+        return candidateService.findByParty(party)
+                .stream().map(candidateService::mapToDTO).collect(Collectors.toList());
+    }
+    
+    @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public CandidateResponseDTO updateCandidate(@PathVariable Long id, @RequestBody CandidateRequestDTO dto) {
+        return candidateService.updateCandidate(id, dto);
+    }
+
+}

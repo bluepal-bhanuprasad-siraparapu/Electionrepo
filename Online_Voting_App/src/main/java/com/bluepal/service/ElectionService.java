@@ -1,0 +1,28 @@
+package com.bluepal.service;
+
+import com.bluepal.dto.ElectionRequestDTO;
+import com.bluepal.dto.ElectionResponseDTO;
+import com.bluepal.entity.Election;
+import com.bluepal.entity.ElectionStatus;
+
+import java.util.List;
+import java.util.Optional;
+
+public interface ElectionService {
+
+    Election saveElection(Election election);
+
+    Optional<Election> findById(Long id);
+
+    List<Election> findAll();
+
+    List<Election> findByStatus(ElectionStatus status);
+
+    void deleteElection(Long id);
+
+    ElectionResponseDTO updateElection(Long id, ElectionRequestDTO dto);
+
+    ElectionResponseDTO createElection(ElectionRequestDTO dto);
+
+    ElectionResponseDTO mapToDTO(Election election);
+}
